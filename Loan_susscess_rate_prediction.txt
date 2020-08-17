@@ -1,0 +1,306 @@
+import pandas as pd
+import numpy as np
+from sklearn.preprocessing import Imputer
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import LabelEncoder
+import matplotlib.pyplot as plt
+%matplotlib inline
+
+#reading csv file from path
+df = pd.read_csv('D:\Book4.csv')
+#checking head of the data upto 3 rows
+df.head(3)
+
+#analyzing data shape in terms of (x,y)
+df.shape
+
+#ana;yzing last 3 rows of dataset
+df.tail(3)
+
+#chacking each row using describe function 
+df.describe()
+
+#removing unnecessory data such as id , initial_list_status , earliest_cr_line etc. as it is not integral column for our prediction
+
+df.drop(["id","earliest_cr_line","int_rate","title","revol_util","initial_list_status", "mort_acc","open_acc","pub_rec","sub_grade","revol_bal","total_acc","zip_code","revol_bal","addr_state"], axis = 1, inplace = True) 
+
+#analyzing the structure of structure of the data after removing unnecessary columns
+df.head(3)
+
+#analyzing the Nan values in each column of dataset 
+df.isnull().sum()
+
+# taking mode of emp_title emp_title column as its a quantitative type
+cols=['emp_title']
+df[cols]=df[cols].fillna(df.mode().iloc[0])
+
+# now reoving the Nan from emp_length by imputing with mean
+cols=['emp_length']
+df[cols]=df[cols].fillna(df.mean().iloc[0])
+
+# now reoving the Nan from emp_length by imputing with mean
+cols=['emp_length']
+
+#analyzing that Nan is removed
+df.isnull().sum()
+
+# we can alsu use df.fillna(0, inplace=True) to remove over all Nan from all dataset
+
+#as grade and emp_length are the ordinal data tye so i'm applying ordinal encoding here
+#ordinal encoding
+mapping_dict = {
+"emp_length": {
+"10+ years": 10,
+"9 years": 9,
+"8 years": 8,
+"7 years": 7,
+"6 years": 6,
+"5 years": 5,
+"4 years": 4,
+"3 years": 3,
+"2 years": 2,
+"1 year": 1,
+"< 1 year": 0,
+"n/a": 0
+},
+"grade":{
+"A": 1,
+"B": 2,
+"C": 3,
+"D": 4,
+"E": 5,
+"F": 6,
+"G": 7
+}
+}
+df = df.replace(mapping_dict)
+df[['emp_length','grade']].head()
+
+#defining rest of the categorical columns as category  
+df["emp_title"] = df["emp_title"].astype('category')
+df["term"] = df["term"].astype('category')
+df["home_ownership"] = df["home_ownership"].astype('category')
+df["verification_status"] = df["verification_status"].astype('category')
+df["purpose"] = df["purpose"].astype('category')
+df["application_type"] = df["application_type"].astype('category')
+df["loan_status"] = df["loan_status"].astype('category')
+
+#applying encoding to to the rest of the categorical columns
+df["emp_title"] = df["emp_title"].cat.codes
+df["term"] = df["term"].cat.codes
+df["home_ownership"] = df["home_ownership"].cat.codes
+df["verification_status"] = df["verification_status"].cat.codes
+df["purpose"] = df["purpose"].cat.codes
+df["application_type"] = df["application_type"].cat.codes
+df["loan_status"] = df["loan_status"].cat.codes
+
+#analyzing the data after encoding all the categorical data
+df.head(3)
+
+#defining x and y and removing loan_Status from data frame as i'm going to predict real time loan status 
+x=df
+y=df['loan_status']
+del x['loan_status']
+
+#Applying feature Scalling in order to normalize the data and speed up the calculations in an algorithm.
+from sklearn.preprocessing import StandardScaler
+sc = StandardScaler()
+x = sc.fit_transform(x)
+
+#As the data is now normalized and label encoding is done now lets split out data into train and test
+from sklearn.model_selection import train_test_split
+
+#Spliting the dataset into traning set and test set
+from sklearn.model_selection import train_test_split
+xtrain, xtest, ytrain, ytest = train_test_split(x, y, test_size=0.2, random_state=0)
+
+# Fitting XGBClassifier to the training data: Model_1 
+from xgboost import XGBClassifier
+#applying the model on training dataset
+classifier1 = XGBClassifier()
+classifier1.fit(xtrain,ytrain)
+
+#predicting the test set result
+pred1 = classifier1.predict(xtest)
+print (pred1)
+
+#Making the Confusion Matrix
+from sklearn.metrics import classification_report, confusion_matrix
+cm1 = confusion_matrix(ytest, pred1)
+pd.crosstab(ytest, pred1, rownames = ['Actual'], colnames = ['Predicted'])
+
+#Model Evaluation
+print("Model evaluation\n" + classification_report(ytest,pred1))
+
+#Sensitivity, Specificity and Accuracy 
+
+sn1=cm1[0,0]/(cm1[0,0]+cm1[1,0])
+print('Sensitivity: ', sn1)
+sp1=cm1[1,1]/(cm1[1,1]+cm1[0,1])
+print('Specificity: ', sp1)
+acc1=(cm1[0,0]+cm1[1,1])/(cm1[0,0]+cm1[1,1]+cm1[0,1]+cm1[1,0])
+print('Accuracy: ', acc1)
+
+# Fitting SVM to the training data: Model 2
+from sklearn.svm import SVC
+#applying the model2 on training dataset
+classifier2 = SVC(kernel = 'linear', C = 1, probability = True, random_state = 0) # poly, sigmoid
+classifier2.fit(xtrain,ytrain)
+
+#predicting the test set result
+pred2 = classifier2.predict(xtest)
+print (pred2)
+#Making the Confusion Matrix
+from sklearn.metrics import classification_report, confusion_matrix
+cm2 = confusion_matrix(ytest, pred2)
+pd.crosstab(ytest, pred2, rownames = ['Actual'], colnames = ['Predicted'])
+#Model Evaluation
+print("Model evaluation\n" + classification_report(ytest,pred2))
+#Sensitivity, Specificity and Accuracy 
+
+sn2=cm2[0,0]/(cm2[0,0]+cm2[1,0])
+print('Sensitivity: ', sn2)
+sp2=cm2[1,1]/(cm2[1,1]+cm2[0,1])
+print('Specificity: ', sp2)
+acc2=(cm2[0,0]+cm2[1,1])/(cm2[0,0]+cm2[1,1]+cm2[0,1]+cm2[1,0])
+print('Accuracy: ', acc2)
+
+
+# Creating and Fitting Random Forest Classifier to the training data: Model 3
+from sklearn.ensemble import RandomForestClassifier
+classifier3 = RandomForestClassifier(n_estimators = 5, criterion = 'entropy')
+classifier3.fit(xtrain,ytrain)
+#predicting the test set result
+ypred3 = classifier3.predict(xtest)
+print (ypred3)
+#Making the Confusion Matrix
+from sklearn.metrics import classification_report, confusion_matrix
+cm3 = confusion_matrix(ytest, pred3)
+pd.crosstab(ytest, pred3, rownames = ['Actual'], colnames = ['Predicted'])
+
+#Model Evaluation
+print("Model evaluation\n" + classification_report(ytest,pred3))
+
+#Sensitivity, Specificity and Accuracy 
+
+sn3=cm3[0,0]/(cm3[0,0]+cm3[1,0])
+print('Sensitivity: ', sn3)
+sp3=cm3[1,1]/(cm3[1,1]+cm3[0,1])
+print('Specificity: ', sp3)
+acc3=(cm3[0,0]+cm3[1,1])/(cm3[0,0]+cm3[1,1]+cm3[0,1]+cm3[1,0])
+print('Accuracy: ', acc3)
+
+
+# Creating and Fitting LogisticRegression to the training data: Model 4
+from sklearn.linear_model import LogisticRegression
+classifier4 = LogisticRegression(penalty = 'l1', random_state = 0)
+classifier4.fit(xtrain,ytrain)
+
+#predicting the test set result
+pred4 = classifier4.predict(xtest)
+print (pred4)
+
+#Making the Confusion Matrix
+from sklearn.metrics import classification_report, confusion_matrix
+cm4 = confusion_matrix(ytest, pred4)
+pd.crosstab(ytest, pred4, rownames = ['Actual'], colnames = ['Predicted'])
+
+#Model Evaluation
+print("Model evaluation\n" + classification_report(ytest,pred4))
+
+#Sensitivity, Specificity and Accuracy 
+
+sn4=cm4[0,0]/(cm4[0,0]+cm4[1,0])
+print('Sensitivity: ', sn4)
+sp4=cm4[1,1]/(cm4[1,1]+cm4[0,1])
+print('Specificity: ', sp4)
+acc4=(cm4[0,0]+cm4[1,1])/(cm4[0,0]+cm4[1,1]+cm4[0,1]+cm4[1,0])
+print('Accuracy: ', acc4)
+
+#sigmoid function
+def sigmoid(x):
+    return (1 / (1 + np.exp(-x)))
+x = np.linspace(-10,3,6)
+y = np.linspace(-10,10,10)
+plt.plot(x, sigmoid(x), 'r', label='Charged off')
+plt.plot(y, sigmoid(y), 'b', label='Fully paid')
+plt.grid()
+plt.suptitle('Sigmoid')
+plt.legend(loc='lower right')
+plt.text(4, 0.8, r'$\sigma(x)=\frac{1}{1+e^{-x}}$', fontsize=15)
+plt.gca().xaxis.set_major_locator(plt.MultipleLocator(1))
+plt.gca().yaxis.set_major_locator(plt.MultipleLocator(0.1))
+plt.xlabel('X Axis')
+plt.ylabel('Y Axis')
+plt.show()
+
+# Creating and Fitting BalancedBaggingClassifier to the training data: Model 5
+from imblearn.ensemble import BalancedBaggingClassifier
+from sklearn.ensemble import RandomForestClassifier
+
+#predicting the test set result
+pred5 = classifier5.predict(xtest)
+print (pred5)
+#Making the Confusion Matrix
+from sklearn.metrics import classification_report, confusion_matrix
+cm5 = confusion_matrix(ytest, pred5)
+pd.crosstab(ytest, pred5, rownames = ['Actual'], colnames = ['Predicted'])
+#Model Evaluation
+print("Model evaluation\n" + classification_report(ytest,pred5))
+
+#Sensitivity, Specificity and Accuracy 
+
+sn5=cm5[0,0]/(cm5[0,0]+cm5[1,0])
+print('Sensitivity: ', sn5)
+sp5=cm5[1,1]/(cm5[1,1]+cm5[0,1])
+print('Specificity: ', sp4)
+acc5=(cm5[0,0]+cm5[1,1])/(cm5[0,0]+cm5[1,1]+cm5[0,1]+cm5[1,0])
+print('Accuracy: ', acc5)
+
+
+# Fitting Decision Tree to the training data: Model 6
+from sklearn.tree import DecisionTreeClassifier
+classifier6 = DecisionTreeClassifier()
+classifier6.fit(xtrain,ytrain)
+
+#predicting the test set result
+pred6 = classifier6.predict(xtest)
+print (pred6)
+#Making the Confusion Matrix
+from sklearn.metrics import classification_report, confusion_matrix
+cm6 = confusion_matrix(ytest, pred6)
+pd.crosstab(ytest, pred6, rownames = ['Actual'], colnames = ['Predicted'])
+#Model Evaluation
+print("Model evaluation\n" + classification_report(ytest,y_pred6))
+
+
+
+#Sensitivity, Specificity and Accuracy 
+
+sn6=cm6[0,0]/(cm6[0,0]+cm6[1,0])
+print('Sensitivity: ', sn6)
+sp6=cm6[1,1]/(cm6[1,1]+cm6[0,1])
+print('Specificity: ', sp4)
+acc6=(cm6[0,0]+cm6[1,1])/(cm6[0,0]+cm6[1,1]+cm6[0,1]+cm6[1,0])
+print('Accuracy: ', acc6)
+
+
+#Over all accuracy 
+print("Acc_XGBoost:",acc1*100,'%',"\nAcc_SVC:",acc2*100,'%',"\nAcc_Random_Forest:",acc3*100,'%',"\nAcc_Logistic:",acc4*100,'%',
+      "\nAcc_BalancedBagging:",acc5*100,'%',"\nAcc_DecisionTree:",acc6*100,'%')
+#bar chart
+import plotly.graph_objects as go
+
+x = ['Fully Paid', 'Charged OFF']
+y = ['82','18']
+
+xlabel=('status')
+ylabel=('freq')
+# Use textposition='auto' for direct text
+fig = go.Figure(data=[go.Bar(
+            x=x, y=y,
+            #text=y,
+            textposition='auto',
+        )])
+
+fig.show()
